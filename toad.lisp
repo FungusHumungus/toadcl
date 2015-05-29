@@ -1,5 +1,13 @@
 (defpackage :toad
-  (:use :cl))
+  (:use :cl)
+  (:export :lazy-map
+           :lazy-nth
+           :lazy-take
+           :lazy-reduce
+           :lazy-filter
+           :lazy-foreach
+           :list->lazy
+           :lazy->list))
 
 (in-package :toad)
 
@@ -23,9 +31,6 @@
 
 (defun force (delayed)
   (funcall delayed))
-
-(defmacro lazy-cons* (head tail)
-  `(cons ,head (delay ,tail)))
 
 (defun lazy-cons (head tail)
   (cons head (delay tail)))
@@ -110,6 +115,14 @@
           (funcall reducing input result)
           result))))
 
+(defun comp (&rest fns)
+  (labels ((call-fns (fns x)
+             (if fns
+                 (call-fns (rest fns) (apply (first fns) x))
+                 x)))
+    (lambda (&rest x)
+      (call-fns fns x))))
+
 (defun integers-starting (n)
   (lazy-cons n (integers-starting (1+ n))))
 
@@ -130,3 +143,8 @@
   (if lst
       (lazy-cons (car lst) (list->lazy (cdr lst)))
       *empty-stream*))
+
+(defun lazy->list (lazy)
+  (if (lazy-empty? lazy)
+      '()
+      (cons (lazy-car lazy) (lazy->list (lazy-cdr lazy)))))
