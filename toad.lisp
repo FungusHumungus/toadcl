@@ -24,8 +24,11 @@
 (defun force (delayed)
   (funcall delayed))
 
-(defmacro lazy-cons (head tail)
+(defmacro lazy-cons* (head tail)
   `(cons ,head (delay ,tail)))
+
+(defun lazy-cons (head tail)
+  (cons head (delay tail)))
 
 (defun lazy-car (stream)
   (car stream))
@@ -48,13 +51,6 @@
       *empty-stream*
       (lazy-cons (lazy-car str)
                  (lazy-take (lazy-cdr str) (1- n)))))
-
-(defun lazy-reduce2 (fn init &rest strs)
-  (if (some #'lazy-empty? strs)
-      init
-      (funcall #'lazy-reduce2 fn
-               (funcall fn init (mapcar #'lazy-car strs))
-               (mapcar #'lazy-cdr strs))))
 
 (defun lazy-reduce (fn init str)
   (if (lazy-empty? str)
@@ -88,6 +84,31 @@
 (defun show (val)
   (print val)
   val)
+
+
+(defun map-reducer (fn)
+  (lambda (result input)
+    (lazy-cons (funcall fn input) result)))
+
+(defun mapping (fn)
+  (lambda (reducing)
+    (lambda (result input)
+      (funcall reducing (funcall fn input) result))))
+
+
+(defun filter-reducer (predicate)
+  (lambda (result input)
+    (if (funcall predicate input)
+        (lazy-cons input result)
+        result)))
+
+(defun filtering (predicate)
+  "eg. (print-seq (lazy-reduce (funcall (filtering #'evenp) #'lazy-cons) '() (lazy-range 0 10)))"
+  (lambda (reducing)
+    (lambda (result input)
+      (if (funcall predicate input)
+          (funcall reducing input result)
+          result))))
 
 (defun integers-starting (n)
   (lazy-cons n (integers-starting (1+ n))))
